@@ -39,19 +39,26 @@ export async function fetchCountryMeta() {
 /**
  * Searches OpenStreetMap's free Nominatim geocoder for a place name.
  * Returns the raw Nominatim results.
+ *
+ * Pass `countryCodes` (an array of lower-case alpha-2 codes) to scope the
+ * search to a set of countries - used by the States/Cities tabs so results
+ * only come from countries the user has already visited.
  */
-export async function searchPlaces(query) {
+export async function searchPlaces(query, { countryCodes } = {}) {
   if (!query || query.trim().length < 2) return [];
 
-  const { data } = await axios.get(NOMINATIM_URL, {
-    params: {
-      q: query,
-      format: 'json',
-      addressdetails: 1,
-      limit: 6,
-      'accept-language': 'en',
-    },
-  });
+  const params = {
+    q: query,
+    format: 'json',
+    addressdetails: 1,
+    limit: 6,
+    'accept-language': 'en',
+  };
+  if (countryCodes && countryCodes.length) {
+    params.countrycodes = countryCodes.join(',');
+  }
+
+  const { data } = await axios.get(NOMINATIM_URL, { params });
 
   return data;
 }

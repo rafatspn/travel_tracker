@@ -128,9 +128,26 @@ export default function WorldMap({
     };
   }, [selectedCountry]);
 
+  // States/Cities tabs let you "drill into" a country to work with its regions.
+  const drillTab = activeTab === 'states' || activeTab === 'cities';
+
   const countryStyle = useCallback(
     (feature) => {
       const iso3 = feature.properties.iso3;
+      const isSelected = drillTab && iso3 && iso3 === selectedCountry?.iso3;
+
+      // While drilling into a country we drop its visited fill so its regions
+      // (and city pins) underneath stand out and stay clickable.
+      if (isSelected) {
+        return {
+          fillColor: COLORS.base,
+          fillOpacity: 0.1,
+          color: COLORS.selectedBorder,
+          weight: 1.5,
+          opacity: 1,
+        };
+      }
+
       const isVisited = iso3 && visitedCountries.has(iso3);
       return {
         fillColor: isVisited ? COLORS.visited : COLORS.unvisited,
@@ -140,7 +157,7 @@ export default function WorldMap({
         opacity: 0.9,
       };
     },
-    [visitedCountries]
+    [visitedCountries, drillTab, selectedCountry]
   );
 
   const onEachCountry = useCallback(
@@ -186,8 +203,10 @@ export default function WorldMap({
 
   const onEachState = useCallback(
     (feature, layer) => {
-      layer.on({
-        click: () => {
+      // Only the States tab toggles a region visited on click; in the Cities
+      // tab the regions are shown purely as context for dropping city pins.
+      if (activeTab === 'states') {
+        layer.on('click', () => {
           const center = layer.getBounds().getCenter();
           onStateClick({
             countryCode: selectedCountry.iso3,
@@ -197,7 +216,9 @@ export default function WorldMap({
             lat: center.lat,
             lng: center.lng,
           });
-        },
+        });
+      }
+      layer.on({
         mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 0.85 }),
         mouseout: (e) => e.target.setStyle(stateStyle(feature)),
       });
@@ -205,13 +226,16 @@ export default function WorldMap({
         layer.bindTooltip(feature.properties.shapeName, { sticky: true, className: 'wp-tooltip' });
       }
     },
-    [onStateClick, selectedCountry, stateStyle]
+    [onStateClick, selectedCountry, stateStyle, activeTab]
   );
 
-  const worldKey = useMemo(() => `world-${[...visitedCountries].sort().join(',')}`, [visitedCountries]);
+  const worldKey = useMemo(
+    () => `world-${activeTab}-${selectedCountry?.iso3 || 'none'}-${[...visitedCountries].sort().join(',')}`,
+    [activeTab, selectedCountry, visitedCountries]
+  );
   const stateKey = useMemo(
-    () => `states-${selectedCountry?.iso3}-${[...visitedStateNames].sort().join(',')}`,
-    [selectedCountry, visitedStateNames]
+    () => `states-${activeTab}-${selectedCountry?.iso3}-${[...visitedStateNames].sort().join(',')}`,
+    [activeTab, selectedCountry, visitedStateNames]
   );
 
   return (
@@ -233,7 +257,7 @@ export default function WorldMap({
           <GeoJSON key={worldKey} data={decoratedWorldGeo} style={countryStyle} onEachFeature={onEachCountry} />
         )}
 
-        {activeTab === 'states' && stateGeo && (
+        {drillTab && stateGeo && (
           <GeoJSON key={stateKey} data={stateGeo} style={stateStyle} onEachFeature={onEachState} />
         )}
 
@@ -260,8 +284,8 @@ export default function WorldMap({
         <div className="wp-map-banner">
           <span>
             Exploring <strong>{selectedCountry.name}</strong>
-            {activeTab === 'states' && stateStatus === 'loading' && ' — loading regions…'}
-            {activeTab === 'states' &&
+            {drillTab && stateStatus === 'loading' && ' — loading regions…'}
+            {drillTab &&
               stateStatus === 'unavailable' &&
               ' — no region data available for this country'}
           </span>

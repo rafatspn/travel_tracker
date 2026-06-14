@@ -78,9 +78,9 @@ export default function App() {
       setSelectedCountry({ iso3, name });
       if (bounds) setFlyTarget({ type: 'bounds', bounds });
 
-      // In the States tab a country click only drills in to reveal its states.
-      // The country stays selected and its visited status is left untouched.
-      if (activeTab === 'states') return;
+      // In the States/Cities tabs a country click only drills in to reveal its
+      // regions. The country stays selected and its visited status is untouched.
+      if (activeTab === 'states' || activeTab === 'cities') return;
 
       const existing = places.country.find((p) => p.countryCode === iso3);
       try {

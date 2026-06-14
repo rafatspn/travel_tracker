@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { searchPlaces, classifyResult } from '../services/geo';
 import PlaceList from './PlaceList';
 import Stats from './Stats';
@@ -20,10 +20,25 @@ export default function Sidebar({ activeTab, setActiveTab, places, countryMeta, 
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef(null);
 
+  // States/Cities tabs only search inside countries the user has already
+  // visited; Countries tab searches the whole world.
+  const restrictToVisited = activeTab === 'states' || activeTab === 'cities';
+
+  // Lower-case alpha-2 codes of visited countries, used to scope the geocoder.
+  const visitedCountryCodes = useMemo(() => {
+    if (!countryMeta?.byAlpha3) return [];
+    return places.country
+      .map((p) => countryMeta.byAlpha3[p.countryCode]?.cca2)
+      .filter(Boolean)
+      .map((c) => c.toLowerCase());
+  }, [places.country, countryMeta]);
+
+  const noVisitedCountries = restrictToVisited && visitedCountryCodes.length === 0;
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (query.trim().length < 2) {
+    if (query.trim().length < 2 || noVisitedCountries) {
       setResults([]);
       setSearching(false);
       return;
@@ -32,8 +47,14 @@ export default function Sidebar({ activeTab, setActiveTab, places, countryMeta, 
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const raw = await searchPlaces(query);
-        setResults(raw.map((r) => classifyResult(r, countryMeta)));
+        const raw = await searchPlaces(
+          query,
+          restrictToVisited ? { countryCodes: visitedCountryCodes } : {}
+        );
+        let classified = raw.map((r) => classifyResult(r, countryMeta));
+        if (activeTab === 'states') classified = classified.filter((r) => r.kind === 'state');
+        else if (activeTab === 'cities') classified = classified.filter((r) => r.kind === 'city');
+        setResults(classified);
       } catch {
         setResults([]);
       } finally {
@@ -42,7 +63,7 @@ export default function Sidebar({ activeTab, setActiveTab, places, countryMeta, 
     }, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(debounceRef.current);
-  }, [query, countryMeta]);
+  }, [query, countryMeta, activeTab, restrictToVisited, visitedCountryCodes, noVisitedCountries]);
 
   const handleSelect = (result) => {
     onSearchSelect(result);
@@ -55,12 +76,24 @@ export default function Sidebar({ activeTab, setActiveTab, places, countryMeta, 
       <div className="search-box">
         <input
           type="text"
-          placeholder="Search any country, state or city…"
+          placeholder={
+            activeTab === 'states'
+              ? 'Search a state in your visited countries…'
+              : activeTab === 'cities'
+              ? 'Search a city in your visited countries…'
+              : 'Search any country, state or city…'
+          }
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search for a place"
         />
         {searching && <div className="search-status">Searching…</div>}
+        {noVisitedCountries && (
+          <div className="search-status">
+            Mark a country as visited first to search its{' '}
+            {activeTab === 'states' ? 'states' : 'cities'}.
+          </div>
+        )}
         {results.length > 0 && (
           <ul className="search-results">
             {results.map((r, i) => (
