@@ -74,9 +74,9 @@ export default function App() {
         return;
       }
 
-      const bounds = layer?.getBounds();
+      // Selecting a country (here or via the sidebar dropdown) drives the map;
+      // the WorldMap flies to it, so we only need to record the selection.
       setSelectedCountry({ iso3, name });
-      if (bounds) setFlyTarget({ type: 'bounds', bounds });
 
       // In the States/Cities tabs a country click only drills in to reveal its
       // regions. The country stays selected and its visited status is untouched.
@@ -197,7 +197,7 @@ export default function App() {
             .catch(() => showToast('Something went wrong updating that country.'));
         }
         setSelectedCountry({ iso3: result.countryCode, name: result.countryName });
-        setFlyTarget({ type: 'point', center: [result.lat, result.lng], zoom: 5 });
+        // WorldMap flies to the country once it's selected.
       } else if (result.kind === 'state') {
         setSelectedCountry({ iso3: result.countryCode, name: result.countryName });
         setFlyTarget({ type: 'point', center: [result.lat, result.lng], zoom: 6 });
@@ -223,6 +223,16 @@ export default function App() {
     },
     [places.country, handleStateClick, handleAddCity, showToast]
   );
+
+  // Picking a country from the sidebar dropdown. null clears the selection.
+  const handleSelectCountry = useCallback((country) => {
+    if (!country) {
+      setSelectedCountry(null);
+      setFlyTarget({ type: 'world' });
+      return;
+    }
+    setSelectedCountry({ iso3: country.iso3, name: country.name });
+  }, []);
 
   const handleBackToWorld = useCallback(() => {
     setSelectedCountry(null);
@@ -262,6 +272,8 @@ export default function App() {
           setActiveTab={setActiveTab}
           places={places}
           countryMeta={countryMeta}
+          selectedCountry={selectedCountry}
+          onSelectCountry={handleSelectCountry}
           onSearchSelect={handleSearchSelect}
           onRemove={handleRemove}
         />

@@ -23,6 +23,28 @@ const cityIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+/** Flies to a country's outline whenever the selected country changes. */
+function CountryFlyer({ geo, iso3 }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!geo || !iso3) return;
+    const feature = geo.features.find((f) => f.properties.iso3 === iso3);
+    if (!feature) return;
+    try {
+      const bounds = L.geoJSON(feature).getBounds();
+      if (bounds.isValid()) {
+        map.flyToBounds(bounds, { padding: [40, 40], duration: 1.1, maxZoom: 6 });
+      }
+    } catch {
+      /* ignore malformed geometry */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iso3]);
+
+  return null;
+}
+
 /** Imperatively pans/zooms the map whenever `target` changes. */
 function FlyController({ target }) {
   const map = useMap();
@@ -277,6 +299,7 @@ export default function WorldMap({
           </Marker>
         ))}
 
+        <CountryFlyer geo={decoratedWorldGeo} iso3={selectedCountry?.iso3} />
         <FlyController target={flyTarget} />
       </MapContainer>
 
