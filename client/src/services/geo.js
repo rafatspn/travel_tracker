@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const REST_COUNTRIES_URL = 'https://restcountries.com/v3.1/all?fields=name,cca2,cca3,ccn3,flag';
+// REST Countries' hosted API was retired in 2025 (every v3.x path now 301s to a
+// deprecation notice). We fetch the same underlying dataset (mledoze/countries,
+// what REST Countries was built on) straight from the jsDelivr CDN instead - it's
+// CORS-enabled and uses identical field names (cca2, cca3, ccn3, name.common, flag).
+const REST_COUNTRIES_URL =
+  'https://cdn.jsdelivr.net/gh/mledoze/countries@master/dist/countries-unescaped.json';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 
 /**

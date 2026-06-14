@@ -27,7 +27,16 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
-    Promise.all([api.get('/places'), fetchCountryMeta()])
+    // Country reference data is best-effort: if it fails the map and saved
+    // places should still load, so we keep it separate from the API call and
+    // never let it surface the backend error banner.
+    const metaPromise = fetchCountryMeta().catch(() => ({
+      byNumeric: {},
+      byAlpha2: {},
+      byAlpha3: {},
+    }));
+
+    Promise.all([api.get('/places'), metaPromise])
       .then(([placesRes, meta]) => {
         if (!active) return;
         const grouped = { country: [], state: [], city: [] };
