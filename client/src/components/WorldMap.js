@@ -48,6 +48,7 @@ export default function WorldMap({
   visitedCities, // array of place docs with type 'city'
   countryMeta, // { byNumeric, byAlpha2, byAlpha3 }
   selectedCountry, // { iso3, name } | null
+  activeTab, // which sidebar tab is active: drives what map clicks select
   flyTarget,
   onCountryClick,
   onStateClick,
@@ -232,7 +233,7 @@ export default function WorldMap({
           <GeoJSON key={worldKey} data={decoratedWorldGeo} style={countryStyle} onEachFeature={onEachCountry} />
         )}
 
-        {stateGeo && (
+        {activeTab === 'states' && stateGeo && (
           <GeoJSON key={stateKey} data={stateGeo} style={stateStyle} onEachFeature={onEachState} />
         )}
 
@@ -259,8 +260,10 @@ export default function WorldMap({
         <div className="wp-map-banner">
           <span>
             Exploring <strong>{selectedCountry.name}</strong>
-            {stateStatus === 'loading' && ' — loading regions…'}
-            {stateStatus === 'unavailable' && ' — no region data available for this country'}
+            {activeTab === 'states' && stateStatus === 'loading' && ' — loading regions…'}
+            {activeTab === 'states' &&
+              stateStatus === 'unavailable' &&
+              ' — no region data available for this country'}
           </span>
           <button onClick={onBackToWorld}>← World map</button>
         </div>

@@ -78,6 +78,10 @@ export default function App() {
       setSelectedCountry({ iso3, name });
       if (bounds) setFlyTarget({ type: 'bounds', bounds });
 
+      // In the States tab a country click only drills in to reveal its states.
+      // The country stays selected and its visited status is left untouched.
+      if (activeTab === 'states') return;
+
       const existing = places.country.find((p) => p.countryCode === iso3);
       try {
         if (existing) {
@@ -101,7 +105,7 @@ export default function App() {
         showToast('Something went wrong updating that country.');
       }
     },
-    [places.country, showToast]
+    [places.country, showToast, activeTab]
   );
 
   const handleStateClick = useCallback(
@@ -246,6 +250,7 @@ export default function App() {
           visitedCities={places.city}
           countryMeta={countryMeta}
           selectedCountry={selectedCountry}
+          activeTab={activeTab}
           flyTarget={flyTarget}
           onCountryClick={handleCountryClick}
           onStateClick={handleStateClick}
