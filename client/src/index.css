@@ -1,0 +1,63 @@
+:root {
+  /* Palette - "field atlas" theme */
+  --ink: #1b2a3a; /* deep navy ink */
+  --ink-soft: rgba(27, 42, 58, 0.62);
+  --parchment: #f4eedd; /* aged paper */
+  --parchment-dark: #e8dcc2;
+  --ocean: #5c8a8e; /* muted teal for unvisited land */
+  --visited: #c4622d; /* terracotta "stamp" color */
+  --visited-soft: rgba(196, 98, 45, 0.16);
+  --gold: #d4a24e; /* accent gold */
+  --line: #d8cbb0;
+
+  /* Type */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--ink);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

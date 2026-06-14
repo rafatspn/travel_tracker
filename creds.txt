@@ -1,0 +1,3 @@
+pass: bJpvgINW4DN7QRwr
+username: rafatspn
+mongo_uri: mongodb+srv://rafatspn:bJpvgINW4DN7QRwr@tracker.vrkucxu.mongodb.net/?appName=tracker
