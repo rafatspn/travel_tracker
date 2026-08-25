@@ -116,6 +116,19 @@ export default function WorldMap({
     };
   }, [worldGeo, countryMeta]);
 
+  // States/Cities tabs let you "drill into" a country to work with its regions.
+  const drillTab = activeTab === 'states' || activeTab === 'cities';
+
+  const visibleWorldGeo = useMemo(() => {
+    if (!decoratedWorldGeo || !drillTab || !selectedCountry?.iso3) return decoratedWorldGeo;
+    return {
+      ...decoratedWorldGeo,
+      features: decoratedWorldGeo.features.filter(
+        (feature) => feature.properties?.iso3 !== selectedCountry.iso3
+      ),
+    };
+  }, [decoratedWorldGeo, drillTab, selectedCountry]);
+
   // Fetch state/province boundaries (free geoBoundaries API) for the selected country.
   useEffect(() => {
     if (!selectedCountry?.iso3) {
@@ -151,26 +164,9 @@ export default function WorldMap({
     };
   }, [selectedCountry]);
 
-  // States/Cities tabs let you "drill into" a country to work with its regions.
-  const drillTab = activeTab === 'states' || activeTab === 'cities';
-
   const countryStyle = useCallback(
     (feature) => {
       const iso3 = feature.properties.iso3;
-      const isSelected = drillTab && iso3 && iso3 === selectedCountry?.iso3;
-
-      // While drilling into a country we drop its visited fill so its regions
-      // (and city pins) underneath stand out and stay clickable.
-      if (isSelected) {
-        return {
-          fillColor: COLORS.base,
-          fillOpacity: 0,
-          color: COLORS.selectedBorder,
-          weight: 1.5,
-          opacity: 1,
-        };
-      }
-
       const isVisited = iso3 && visitedCountries.has(iso3);
       return {
         fillColor: isVisited ? COLORS.visited : COLORS.unvisited,
@@ -180,7 +176,7 @@ export default function WorldMap({
         opacity: 0.9,
       };
     },
-    [visitedCountries, drillTab, selectedCountry]
+    [visitedCountries]
   );
 
   const onEachCountry = useCallback(
@@ -256,13 +252,21 @@ export default function WorldMap({
   );
 
   const worldKey = useMemo(
-    () => `world-${activeTab}-${selectedCountry?.iso3 || 'none'}-${[...visitedCountries].sort().join(',')}`,
+    () =>
+      `world-${activeTab}-${selectedCountry?.iso3 || 'none'}-${[
+        ...visitedCountries,
+      ].sort().join(',')}`,
     [activeTab, selectedCountry, visitedCountries]
   );
   const stateKey = useMemo(
     () => `states-${activeTab}-${selectedCountry?.iso3}-${[...visitedStateKeys].sort().join(',')}`,
     [activeTab, selectedCountry, visitedStateKeys]
   );
+  const visibleCities = useMemo(() => {
+    if (activeTab !== 'cities') return [];
+    if (!selectedCountry?.iso3) return visitedCities;
+    return visitedCities.filter((city) => city.countryCode === selectedCountry.iso3);
+  }, [activeTab, selectedCountry, visitedCities]);
 
   return (
     <div className="wp-map">
@@ -279,15 +283,15 @@ export default function WorldMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
 
-        {decoratedWorldGeo && (
-          <GeoJSON key={worldKey} data={decoratedWorldGeo} style={countryStyle} onEachFeature={onEachCountry} />
+        {visibleWorldGeo && (
+          <GeoJSON key={worldKey} data={visibleWorldGeo} style={countryStyle} onEachFeature={onEachCountry} />
         )}
 
         {drillTab && stateGeo && (
           <GeoJSON key={stateKey} data={stateGeo} style={stateStyle} onEachFeature={onEachState} />
         )}
 
-        {visitedCities.map((city) => (
+        {visibleCities.map((city) => (
           <Marker key={city._id} position={[city.lat, city.lng]} icon={cityIcon}>
             <Popup>
               <div className="wp-popup">
