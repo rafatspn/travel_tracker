@@ -10,6 +10,7 @@ const WORLD_TOPOJSON_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries
 
 const COLORS = {
   visited: '#c4622d',
+  visitedState: '#4f9f72',
   unvisited: '#5c8a8e',
   base: '#e8dcc2',
   border: '#1b2a3a',
@@ -163,7 +164,7 @@ export default function WorldMap({
       if (isSelected) {
         return {
           fillColor: COLORS.base,
-          fillOpacity: 0.1,
+          fillOpacity: 0,
           color: COLORS.selectedBorder,
           weight: 1.5,
           opacity: 1,
@@ -196,13 +197,15 @@ export default function WorldMap({
     [onCountryClick, countryStyle]
   );
 
-  // Names of visited states/provinces *within the currently selected country*,
-  // lower-cased for loose matching against geoBoundaries' shapeName field.
-  const visitedStateNames = useMemo(() => {
+  // Keys for visited states/provinces *within the currently selected country*.
+  // Search results and map clicks may store slightly different identifiers, so
+  // match against both the visible name and any saved region code.
+  const visitedStateKeys = useMemo(() => {
     const set = new Set();
     visitedStates.forEach((s) => {
       if (s.countryCode === selectedCountry?.iso3) {
-        set.add(s.name.toLowerCase().trim());
+        if (s.name) set.add(s.name.toLowerCase().trim());
+        if (s.stateCode) set.add(String(s.stateCode).toLowerCase().trim());
       }
     });
     return set;
@@ -211,16 +214,17 @@ export default function WorldMap({
   const stateStyle = useCallback(
     (feature) => {
       const name = (feature.properties?.shapeName || '').toLowerCase().trim();
-      const isVisited = visitedStateNames.has(name);
+      const code = (feature.properties?.shapeISO || '').toLowerCase().trim();
+      const isVisited = visitedStateKeys.has(name) || visitedStateKeys.has(code);
       return {
-        fillColor: isVisited ? COLORS.visited : COLORS.base,
-        fillOpacity: isVisited ? 0.8 : 0.25,
+        fillColor: isVisited ? COLORS.visitedState : COLORS.base,
+        fillOpacity: isVisited ? 0.8 : 0.18,
         color: COLORS.border,
         weight: 1,
         opacity: 0.9,
       };
     },
-    [visitedStateNames]
+    [visitedStateKeys]
   );
 
   const onEachState = useCallback(
@@ -256,8 +260,8 @@ export default function WorldMap({
     [activeTab, selectedCountry, visitedCountries]
   );
   const stateKey = useMemo(
-    () => `states-${activeTab}-${selectedCountry?.iso3}-${[...visitedStateNames].sort().join(',')}`,
-    [activeTab, selectedCountry, visitedStateNames]
+    () => `states-${activeTab}-${selectedCountry?.iso3}-${[...visitedStateKeys].sort().join(',')}`,
+    [activeTab, selectedCountry, visitedStateKeys]
   );
 
   return (
@@ -318,8 +322,11 @@ export default function WorldMap({
 
       <div className="wp-legend">
         <div className="wp-legend-item">
-          <span className="wp-legend-swatch" style={{ background: COLORS.visited }} />
-          Visited
+          <span
+            className="wp-legend-swatch"
+            style={{ background: drillTab ? COLORS.visitedState : COLORS.visited }}
+          />
+          {drillTab ? 'Visited state' : 'Visited'}
         </div>
         <div className="wp-legend-item">
           <span className="wp-legend-swatch" style={{ background: COLORS.unvisited }} />
