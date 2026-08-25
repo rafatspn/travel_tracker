@@ -7,6 +7,7 @@ import './WorldMap.css';
 
 // Free, no-key-required 110m world country boundaries (TopoJSON)
 const WORLD_TOPOJSON_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+const USA_STATES_TOPOJSON_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
 
 const COLORS = {
   visited: '#c4622d',
@@ -80,6 +81,17 @@ const US_STATE_CODES = {
 const US_STATE_NAMES_BY_CODE = Object.fromEntries(
   Object.entries(US_STATE_CODES).map(([name, code]) => [code, name])
 );
+
+function getRegionName(feature) {
+  return feature.properties?.shapeName || feature.properties?.name || 'Unknown region';
+}
+
+function getRegionCode(feature) {
+  const name = normalizeRegionKey(getRegionName(feature));
+  const usCode = US_STATE_CODES[name];
+  if (usCode) return `US-${usCode.toUpperCase()}`;
+  return feature.properties?.shapeISO || feature.properties?.id || feature.id || getRegionName(feature);
+}
 
 function normalizeRegionKey(value) {
   return String(value || '')
@@ -234,13 +246,20 @@ export default function WorldMap({
     setStateStatus('loading');
     setStateGeo(null);
 
-    fetch(`https://www.geoboundaries.org/api/current/gbOpen/${selectedCountry.iso3}/ADM1/`)
-      .then((r) => {
-        if (!r.ok) throw new Error('No boundary metadata');
-        return r.json();
-      })
-      .then((meta) => fetch(meta.gjDownloadURL))
-      .then((r) => r.json())
+    const stateGeoPromise =
+      selectedCountry.iso3 === 'USA'
+        ? fetch(USA_STATES_TOPOJSON_URL)
+            .then((r) => r.json())
+            .then((topo) => topojson.feature(topo, topo.objects.states))
+        : fetch(`https://www.geoboundaries.org/api/current/gbOpen/${selectedCountry.iso3}/ADM1/`)
+            .then((r) => {
+              if (!r.ok) throw new Error('No boundary metadata');
+              return r.json();
+            })
+            .then((meta) => fetch(meta.gjDownloadURL))
+            .then((r) => r.json());
+
+    stateGeoPromise
       .then((geo) => {
         if (!active) return;
         setStateGeo(geo);
@@ -310,9 +329,13 @@ export default function WorldMap({
   const stateStyle = useCallback(
     (feature) => {
       const featureKeys = regionKeys(
+        getRegionName(feature),
+        getRegionCode(feature),
         feature.properties?.shapeName,
         feature.properties?.shapeISO,
-        feature.properties?.shapeID
+        feature.properties?.shapeID,
+        feature.properties?.name,
+        feature.id
       );
       const isVisited = hasVisitedRegion(featureKeys, visitedStateKeys);
       return {
@@ -333,11 +356,12 @@ export default function WorldMap({
       if (activeTab === 'states') {
         layer.on('click', () => {
           const center = layer.getBounds().getCenter();
+          const name = getRegionName(feature);
           onStateClick({
             countryCode: selectedCountry.iso3,
             countryName: selectedCountry.name,
-            name: feature.properties?.shapeName || 'Unknown region',
-            stateCode: feature.properties?.shapeISO || feature.properties?.shapeName,
+            name,
+            stateCode: getRegionCode(feature),
             lat: center.lat,
             lng: center.lng,
           });
@@ -347,9 +371,7 @@ export default function WorldMap({
         mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 0.85 }),
         mouseout: (e) => e.target.setStyle(stateStyle(feature)),
       });
-      if (feature.properties?.shapeName) {
-        layer.bindTooltip(feature.properties.shapeName, { sticky: true, className: 'wp-tooltip' });
-      }
+      layer.bindTooltip(getRegionName(feature), { sticky: true, className: 'wp-tooltip' });
     },
     [onStateClick, selectedCountry, stateStyle, activeTab]
   );
