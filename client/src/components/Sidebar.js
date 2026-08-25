@@ -207,7 +207,7 @@ export default function Sidebar({
               <p className="empty-hint">Choose one of your visited countries to see and add its cities.</p>
             </div>
           ))}
-        {activeTab === 'stats' && <Stats places={places} />}
+        {activeTab === 'stats' && <Stats places={places} selectedCountry={selectedCountry} />}
       </div>
     </aside>
   );
