@@ -222,16 +222,6 @@ export default function WorldMap({
   // States/Cities tabs let you "drill into" a country to work with its regions.
   const drillTab = activeTab === 'states' || activeTab === 'cities';
 
-  const visibleWorldGeo = useMemo(() => {
-    if (!decoratedWorldGeo || !drillTab || !selectedCountry?.iso3) return decoratedWorldGeo;
-    return {
-      ...decoratedWorldGeo,
-      features: decoratedWorldGeo.features.filter(
-        (feature) => feature.properties?.iso3 !== selectedCountry.iso3
-      ),
-    };
-  }, [decoratedWorldGeo, drillTab, selectedCountry]);
-
   // Fetch state/province boundaries (free geoBoundaries API) for the selected country.
   useEffect(() => {
     if (!selectedCountry?.iso3) {
@@ -396,8 +386,8 @@ export default function WorldMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
 
-        {visibleWorldGeo && (
-          <GeoJSON key={worldKey} data={visibleWorldGeo} style={countryStyle} onEachFeature={onEachCountry} />
+        {(!drillTab || !selectedCountry) && decoratedWorldGeo && (
+          <GeoJSON key={worldKey} data={decoratedWorldGeo} style={countryStyle} onEachFeature={onEachCountry} />
         )}
 
         {drillTab && stateGeo && (
