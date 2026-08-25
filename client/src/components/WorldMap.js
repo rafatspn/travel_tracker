@@ -24,6 +24,63 @@ const cityIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+const US_STATE_CODES = {
+  alabama: 'al',
+  alaska: 'ak',
+  arizona: 'az',
+  arkansas: 'ar',
+  california: 'ca',
+  colorado: 'co',
+  connecticut: 'ct',
+  delaware: 'de',
+  'district of columbia': 'dc',
+  florida: 'fl',
+  georgia: 'ga',
+  hawaii: 'hi',
+  idaho: 'id',
+  illinois: 'il',
+  indiana: 'in',
+  iowa: 'ia',
+  kansas: 'ks',
+  kentucky: 'ky',
+  louisiana: 'la',
+  maine: 'me',
+  maryland: 'md',
+  massachusetts: 'ma',
+  michigan: 'mi',
+  minnesota: 'mn',
+  mississippi: 'ms',
+  missouri: 'mo',
+  montana: 'mt',
+  nebraska: 'ne',
+  nevada: 'nv',
+  'new hampshire': 'nh',
+  'new jersey': 'nj',
+  'new mexico': 'nm',
+  'new york': 'ny',
+  'north carolina': 'nc',
+  'north dakota': 'nd',
+  ohio: 'oh',
+  oklahoma: 'ok',
+  oregon: 'or',
+  pennsylvania: 'pa',
+  'rhode island': 'ri',
+  'south carolina': 'sc',
+  'south dakota': 'sd',
+  tennessee: 'tn',
+  texas: 'tx',
+  utah: 'ut',
+  vermont: 'vt',
+  virginia: 'va',
+  washington: 'wa',
+  'west virginia': 'wv',
+  wisconsin: 'wi',
+  wyoming: 'wy',
+};
+const US_STATE_NAMES_BY_CODE = Object.fromEntries(
+  Object.entries(US_STATE_CODES).map(([name, code]) => [code, name])
+);
+
 function normalizeRegionKey(value) {
   return String(value || '')
     .toLowerCase()
@@ -34,17 +91,40 @@ function normalizeRegionKey(value) {
 
 function regionKeys(...values) {
   const keys = new Set();
+  const add = (key) => {
+    if (!key) return;
+    keys.add(key);
+    const stateCode = US_STATE_CODES[key];
+    if (stateCode) keys.add(stateCode);
+    const stateName = US_STATE_NAMES_BY_CODE[key];
+    if (stateName) keys.add(stateName);
+  };
+
   values.forEach((value) => {
     const raw = String(value || '').toLowerCase().trim();
     const normalized = normalizeRegionKey(value);
-    if (raw) keys.add(raw);
-    if (normalized) keys.add(normalized);
+    add(raw);
+    add(normalized);
     if (raw.includes('-')) {
       const suffix = raw.split('-').pop();
-      if (suffix) keys.add(suffix);
+      add(suffix);
     }
   });
   return keys;
+}
+
+function hasVisitedRegion(featureKeys, visitedKeys) {
+  for (const featureKey of featureKeys) {
+    if (visitedKeys.has(featureKey)) return true;
+  }
+
+  const featureWords = [...featureKeys].filter((key) => key.length > 3);
+  const visitedWords = [...visitedKeys].filter((key) => key.length > 3);
+  return featureWords.some((featureKey) =>
+    visitedWords.some(
+      (visitedKey) => featureKey.includes(visitedKey) || visitedKey.includes(featureKey)
+    )
+  );
 }
 
 /** Flies to a country's outline whenever the selected country changes. */
@@ -244,10 +324,10 @@ export default function WorldMap({
         feature.properties?.shapeISO,
         feature.properties?.shapeID
       );
-      const isVisited = [...featureKeys].some((key) => visitedStateKeys.has(key));
+      const isVisited = hasVisitedRegion(featureKeys, visitedStateKeys);
       return {
         fillColor: isVisited ? COLORS.visitedState : COLORS.base,
-        fillOpacity: isVisited ? 0.8 : 0.18,
+        fillOpacity: isVisited ? 0.8 : 0,
         color: COLORS.border,
         weight: 1,
         opacity: 0.9,
