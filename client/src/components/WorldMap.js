@@ -24,6 +24,29 @@ const cityIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+function normalizeRegionKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\b(state|province|region|prefecture|governorate|department|territory)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function regionKeys(...values) {
+  const keys = new Set();
+  values.forEach((value) => {
+    const raw = String(value || '').toLowerCase().trim();
+    const normalized = normalizeRegionKey(value);
+    if (raw) keys.add(raw);
+    if (normalized) keys.add(normalized);
+    if (raw.includes('-')) {
+      const suffix = raw.split('-').pop();
+      if (suffix) keys.add(suffix);
+    }
+  });
+  return keys;
+}
+
 /** Flies to a country's outline whenever the selected country changes. */
 function CountryFlyer({ geo, iso3 }) {
   const map = useMap();
@@ -193,25 +216,35 @@ export default function WorldMap({
     [onCountryClick, countryStyle]
   );
 
+  const selectedCountryCodes = useMemo(() => {
+    if (!selectedCountry?.iso3) return new Set();
+    const codes = new Set([selectedCountry.iso3.toUpperCase()]);
+    const alpha2 = countryMeta?.byAlpha3?.[selectedCountry.iso3]?.cca2;
+    if (alpha2) codes.add(alpha2.toUpperCase());
+    return codes;
+  }, [selectedCountry, countryMeta]);
+
   // Keys for visited states/provinces *within the currently selected country*.
   // Search results and map clicks may store slightly different identifiers, so
   // match against both the visible name and any saved region code.
   const visitedStateKeys = useMemo(() => {
     const set = new Set();
     visitedStates.forEach((s) => {
-      if (s.countryCode === selectedCountry?.iso3) {
-        if (s.name) set.add(s.name.toLowerCase().trim());
-        if (s.stateCode) set.add(String(s.stateCode).toLowerCase().trim());
+      if (selectedCountryCodes.has(String(s.countryCode || '').toUpperCase())) {
+        regionKeys(s.name, s.stateCode, s.stateName).forEach((key) => set.add(key));
       }
     });
     return set;
-  }, [visitedStates, selectedCountry]);
+  }, [visitedStates, selectedCountryCodes]);
 
   const stateStyle = useCallback(
     (feature) => {
-      const name = (feature.properties?.shapeName || '').toLowerCase().trim();
-      const code = (feature.properties?.shapeISO || '').toLowerCase().trim();
-      const isVisited = visitedStateKeys.has(name) || visitedStateKeys.has(code);
+      const featureKeys = regionKeys(
+        feature.properties?.shapeName,
+        feature.properties?.shapeISO,
+        feature.properties?.shapeID
+      );
+      const isVisited = [...featureKeys].some((key) => visitedStateKeys.has(key));
       return {
         fillColor: isVisited ? COLORS.visitedState : COLORS.base,
         fillOpacity: isVisited ? 0.8 : 0.18,
